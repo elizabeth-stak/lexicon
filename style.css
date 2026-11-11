@@ -175,3 +175,4 @@ h1 { font: 800 60px/1 var(--head); margin: 0 0 10px; letter-spacing: -.03em; tex
 .review { display: grid; gap: 8px; }
 .rv { border: 2px solid var(--ink); border-radius: 10px; padding: 9px 12px; background: var(--paper); font-size: 15px; }
 .rv .pos { margin: 0 6px 0 6px; font-size: 12px; vertical-align: 1px; }
+.pron { color: var(--muted); font-weight: 500; letter-spacing: .02em; }

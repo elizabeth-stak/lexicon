@@ -129,7 +129,7 @@ function answerLearn(btn) {
   $("learnFb").innerHTML = `
     <div class="fb ${ok ? "good" : "bad"}">
       ${ok
-        ? `correct, <b>${esc(learnWord.w)}</b> is added to game.`
+        ? `correct, <b>${esc(learnWord.w)}</b>${PRON[learnWord.w] ? ` <span class="pron">(${esc(PRON[learnWord.w])})</span>` : ""} is added to the game.`
         : `not quite, it's <b>${esc(learnWord.w)}</b>. it'll come back in this set.<div class="picked"><b>${esc(picked.w)}</b> <span class="pos ${esc(picked.p)}">${abbr(picked.p)}</span>${esc(picked.d)}</div>`}
     </div>
     <div class="actions"><button class="btn" id="learnNext">${left ? "next →" : "finish set →"}</button></div>`;
