@@ -5,7 +5,7 @@ const MIN_TO_PLAY = 5;      // words you need to learn before playing
 
 // ---------- saved progress (stays in this browser) ----------
 const STORE = "lexicon-v1";
-let state = { learned: {}, miss: {}, best: 0, tier: "1" };
+let state = { learned: {}, miss: {}, best: 0 };
 try {
   const saved = JSON.parse(localStorage.getItem(STORE));
   if (saved) state = Object.assign(state, saved);
@@ -20,8 +20,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;"
 const POS = { noun: "n.", verb: "v.", adjective: "adj.", adverb: "adv." };
 const abbr = p => POS[p] || p;
 const lookup = w => `https://www.merriam-webster.com/dictionary/${encodeURIComponent(w)}`;
-const entryHTML = x => `<span class="pos">${abbr(x.p)}</span> ${esc(x.d)}`;
-const inTier = x => state.tier === "all" || String(x.t) === state.tier;
+const entryHTML = x => `<span class="pos ${esc(x.p)}">${abbr(x.p)}</span>${esc(x.d)}`;
 const learnedWords = () => WORDS.filter(x => state.learned[x.w]);
 
 function show(id) {
@@ -32,33 +31,31 @@ let screen = "home";
 
 // ---------- home ----------
 function renderHome() {
-  document.querySelectorAll("#tiers button").forEach(b => b.classList.toggle("on", b.dataset.tier === state.tier));
-  const tierWords = WORDS.filter(inTier);
-  const tierLearned = tierWords.filter(x => state.learned[x.w]).length;
-  $("learnSub").textContent = `${tierLearned} of ${tierWords.length} learned in this tier`;
   const n = learnedWords().length;
+  $("learnSub").textContent = n < WORDS.length ? `${WORDS.length - n} new words to meet` : "you've met them all";
+  $("progNum").textContent = `${n} / ${WORDS.length}`;
+  $("progBar").style.width = (n / WORDS.length * 100) + "%";
   if (n < MIN_TO_PLAY) {
     $("goPlay").disabled = true;
-    $("playSub").textContent = `Learn ${MIN_TO_PLAY - n} more to unlock`;
+    $("playSub").textContent = `learn ${MIN_TO_PLAY - n} more to unlock`;
   } else {
     $("goPlay").disabled = false;
     $("playSub").textContent = `${n} words in play · best ${state.best}`;
   }
   show("home");
 }
-document.querySelectorAll("#tiers button").forEach(b => b.onclick = () => { state.tier = b.dataset.tier; save(); renderHome(); });
 $("goLearn").onclick = startLearn;
 $("goPlay").onclick = startPlay;
 document.querySelectorAll("[data-home]").forEach(b => b.onclick = renderHome);
 
 function bindReset() {
   $("resetBtn").onclick = () => {
-    $("resetWrap").innerHTML = `Clear all progress? <button class="btn small" id="yes">Yes, reset</button> <button class="btn ghost small" id="no">Cancel</button>`;
+    $("resetWrap").innerHTML = `clear everything? <button class="btn small" id="yes">yes, reset</button> <button class="btn ghost small" id="no">cancel</button>`;
     $("yes").onclick = () => { state.learned = {}; state.miss = {}; state.best = 0; save(); restoreReset(); renderHome(); };
     $("no").onclick = restoreReset;
   };
 }
-function restoreReset() { $("resetWrap").innerHTML = `<button class="link" id="resetBtn">Reset progress</button>`; bindReset(); }
+function restoreReset() { $("resetWrap").innerHTML = `<button class="link" id="resetBtn">reset progress</button>`; bindReset(); }
 bindReset();
 
 // ---------- learn (multiple choice) ----------
@@ -67,12 +64,11 @@ let learnWord = null, learnDone = false, lastLearn = null;
 function startLearn() { show("learn"); nextLearn(); }
 
 function nextLearn() {
-  const pool = WORDS.filter(x => inTier(x) && !state.learned[x.w]);
-  const tierWords = WORDS.filter(inTier);
-  $("learnCount").textContent = `${tierWords.length - pool.length} of ${tierWords.length} learned`;
+  const pool = WORDS.filter(x => !state.learned[x.w]);
+  $("learnCount").textContent = `${WORDS.length - pool.length} / ${WORDS.length} learned`;
   const panel = $("learnPanel");
   if (!pool.length) {
-    panel.innerHTML = `<div class="def">You've learned every word in this tier.</div><p class="muted">Switch tiers on the home screen, or go play.</p>`;
+    panel.innerHTML = `<div class="def">You've learned every word.</div><p>Go play, or add more words to words.js.</p>`;
     learnWord = null; return;
   }
   const choices = pool.length > 1 ? pool.filter(x => x.w !== lastLearn) : pool;
@@ -84,7 +80,6 @@ function nextLearn() {
   const opts = shuffle(same.concat(other).slice(0, 3).concat([learnWord]));
 
   panel.innerHTML = `
-    <span class="stage">Which word fits?</span>
     <div class="def">${entryHTML(learnWord)}</div>
     <div class="choices">${opts.map((o, i) => `<button class="choice" data-w="${esc(o.w)}"><span class="k">${i + 1}</span>${esc(o.w)}</button>`).join("")}</div>
     <div id="learnFb"></div>`;
@@ -95,7 +90,7 @@ function answerLearn(btn) {
   if (learnDone) return;
   learnDone = true; lastLearn = learnWord.w;
   const ok = btn.dataset.w === learnWord.w;
-  document.querySelectorAll(".choice").forEach(b => { b.disabled = true; if (b.dataset.w === learnWord.w) b.classList.add("right"); });
+  document.querySelectorAll(".choice").forEach(b => { b.disabled = true; if (b.dataset.w === learnWord.w) b.classList.add("right"); else if (b !== btn) b.classList.add("dim"); });
   if (ok) {
     state.learned[learnWord.w] = true; save();
   } else {
@@ -103,10 +98,10 @@ function answerLearn(btn) {
   }
   $("learnFb").innerHTML = `
     <div class="fb ${ok ? "good" : "bad"}">
-      ${ok ? `Right. <b>${esc(learnWord.w)}</b> is now in the game.` : `Not quite. It's <b>${esc(learnWord.w)}</b>. It'll come back.`}
-      · <a href="${lookup(learnWord.w)}" target="_blank" rel="noopener">see it in the dictionary</a>
+      ${ok ? `yep. <b>${esc(learnWord.w)}</b> is in the game now.` : `nope, it's <b>${esc(learnWord.w)}</b>. it'll come back around.`}
+      · <a href="${lookup(learnWord.w)}" target="_blank" rel="noopener">dictionary ↗</a>
     </div>
-    <div class="actions"><button class="btn" id="learnNext">Next</button></div>`;
+    <div class="actions"><button class="btn" id="learnNext">next →</button></div>`;
   $("learnNext").onclick = nextLearn;
   $("learnNext").focus();
 }
@@ -217,16 +212,17 @@ function endRound() {
   save();
 
   $("rScore").textContent = score;
-  $("rBest").textContent = newBest ? "New best" : `Best: ${state.best}`;
+  $("rBest").textContent = newBest ? "★ new best" : `best: ${state.best}`;
+  $("rBest").classList.toggle("new", newBest);
   const uniq = arr => arr.filter((x, i) => arr.findIndex(y => y.w === x.w) === i);
   let html = "";
   const miss = uniq(skipped);
   if (miss.length) {
-    html += `<div class="list-title">Missed</div>` + miss.map(x => `
+    html += `<div class="list-title">missed — study these</div>` + miss.map(x => `
       <div class="entry"><div class="w"><a href="${lookup(x.w)}" target="_blank" rel="noopener">${esc(x.w)}</a></div><div class="d">${entryHTML(x)}</div></div>`).join("");
   }
   if (got.length) {
-    html += `<div class="list-title">Got</div><div class="chips">${uniq(got).map(x => `<span class="chip">${esc(x.w)}</span>`).join("")}</div>`;
+    html += `<div class="list-title">got 'em</div><div class="chips">${uniq(got).map(x => `<span class="chip">${esc(x.w)}</span>`).join("")}</div>`;
   }
   $("rLists").innerHTML = html;
   show("results");
