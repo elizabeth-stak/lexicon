@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>word lab</title>
+  <title>Sesquipedalian</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Young+Serif&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
 
     <!-- HOME -->
     <section id="home" class="screen">
-      <h1>word lab<span class="star">*</span></h1>
+      <h1>Sesquipedalian</h1>
       <p class="sub">pick it, type it, keep it.</p>
 
       <div class="cards">
@@ -45,7 +45,7 @@
         <span class="count" id="learnCount"></span>
       </div>
       <div class="panel" id="learnPanel"></div>
-      <p class="hint-keys"><kbd>1</kbd>–<kbd>4</kbd> to choose · <kbd>Enter</kbd> for next</p>
+      <p class="hint-keys"><kbd>1</kbd>–<kbd>4</kbd> to choose</p>
     </section>
 
     <!-- PLAY -->
@@ -62,17 +62,18 @@
 
       <div class="panel" id="playPanel">
         <div class="def" id="pDef"></div>
-        <div class="starts">starts with <span class="letter" id="pStart"></span></div>
+        <div class="starts">starts with <span class="letter" id="pStart"></span><span class="len" id="pLen"></span></div>
         <div class="typebox">
           <span class="dot" id="dot"></span>
           <input id="pInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type the word…">
         </div>
+        <div class="reveal hidden" id="reveal"></div>
       </div>
 
       <div class="overlay" id="startOverlay">
         <div class="ov-card">
           <p class="ov-title">ready?</p>
-          <p>1:30 on the clock · <b>+5s</b> per word · <kbd>Esc</kbd> skips</p>
+          <p>1:30 on the clock · <b>+5s</b> per word · <kbd>Esc</kbd> skips and shows the answer</p>
           <p class="ov-go">press <kbd>Enter</kbd> to start</p>
         </div>
       </div>
