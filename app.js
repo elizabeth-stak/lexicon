@@ -61,6 +61,15 @@ function bindReset() {
 function restoreReset() { $("resetWrap").innerHTML = `<button class="link" id="resetBtn">reset progress</button>`; bindReset(); }
 bindReset();
 
+// ---------- snoopy ----------
+function setSnoopy(mood) {
+  const img = $("learnSnoopy");
+  const src = `img/snoopy-${mood}.png`;
+  if (img.getAttribute("src") === src) return;
+  img.setAttribute("src", src);
+  img.classList.remove("bounce"); void img.offsetWidth; img.classList.add("bounce");
+}
+
 // ---------- learn (multiple choice, in sets) ----------
 // Learn works in sets of CHUNK_SIZE words. Missed words go to the back of the
 // line, and the set only ends once every word in it has been answered correctly.
@@ -94,6 +103,7 @@ function nextLearn() {
   const done = c.words.length - new Set(c.queue).size;
   $("learnCount").textContent = `set: ${done} / ${c.words.length}`;
   learnWord = findWord(c.queue[0]); learnDone = false;
+  setSnoopy("sleepy");
 
   // distractors: other words from this set with the same part of speech first,
   // then other same part of speech words, then anything
@@ -116,6 +126,7 @@ function answerLearn(btn) {
   const ok = btn.dataset.w === learnWord.w;
   document.querySelectorAll(".choice").forEach(b => { b.disabled = true; if (b.dataset.w === learnWord.w) b.classList.add("right"); else if (b !== btn) b.classList.add("dim"); });
   c.queue.shift();
+  setSnoopy(ok ? "happy" : "sad");
   if (ok) {
     state.learned[learnWord.w] = true;
   } else {
@@ -139,6 +150,7 @@ function answerLearn(btn) {
 
 function chunkDone() {
   const c = state.chunk;
+  setSnoopy("happy");
   $("learnCount").textContent = `set: ${c.words.length} / ${c.words.length}`;
   const remainingWords = WORDS.filter(x => !state.learned[x.w]).length;
   $("learnPanel").innerHTML = `
@@ -214,17 +226,18 @@ function nextWord() {
   setDot("");
 }
 
-function setDot(v) {
-  const d = $("dot");
-  d.className = "dot";
-  if (!v) return;
-  d.classList.add(current.w.toLowerCase().startsWith(v) ? "good" : "bad");
+// one dot under each typed letter: green if it matches that spot in the word, red if not
+function setDot() {
+  const typed = $("pInput").value.toLowerCase();
+  const target = current.w.toLowerCase();
+  $("dots").innerHTML = [...typed].map((ch, i) =>
+    `<span class="d"><i class="${ch === target[i] ? "good" : "bad"}"></i></span>`).join("");
 }
 
 $("pInput").addEventListener("input", () => {
   if (!playing || paused) return;
   const v = $("pInput").value.trim().toLowerCase();
-  setDot(v);
+  setDot();
   if (v === current.w.toLowerCase()) correct();
 });
 
@@ -249,7 +262,7 @@ function skip() {
   save();
   $("pInput").disabled = true;
   setDot("");
-  $("reveal").innerHTML = `it was <b>${esc(current.w)}</b> <span class="go">· clock paused · press <kbd>Enter</kbd> to keep going</span>`;
+  $("reveal").innerHTML = `it was <b>${esc(current.w)}</b>${PRON[current.w] ? ` <span class="pron">(${esc(PRON[current.w])})</span>` : ""} <span class="go">· clock paused · press <kbd>Enter</kbd> to keep going</span>`;
   $("reveal").classList.remove("hidden");
 }
 
@@ -286,7 +299,7 @@ function endRound() {
   const miss = uniq(skipped);
   if (miss.length) {
     html += `<div class="list-title">missed — study these</div>` + miss.map(x => `
-      <div class="entry"><div class="w"><a href="${lookup(x.w)}" target="_blank" rel="noopener">${esc(x.w)}</a></div><div class="d">${entryHTML(x)}</div></div>`).join("");
+      <div class="entry"><div class="w"><a href="${lookup(x.w)}" target="_blank" rel="noopener">${esc(x.w)}</a>${PRON[x.w] ? ` <span class="pron">(${esc(PRON[x.w])})</span>` : ""}</div><div class="d">${entryHTML(x)}</div></div>`).join("");
   }
   if (got.length) {
     html += `<div class="list-title">got 'em</div><div class="chips">${uniq(got).map(x => `<span class="chip">${esc(x.w)}</span>`).join("")}</div>`;

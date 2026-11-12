@@ -6,7 +6,7 @@
   <title>Sesquipedalian</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,800;1,9..40,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -33,6 +33,8 @@
         <div class="progress"><div id="progBar"></div></div>
       </div>
 
+      <img class="home-snoopy" src="img/snoopy-sleepy.png" alt="">
+
       <div class="foot">
         <span id="resetWrap"><button class="link" id="resetBtn">reset progress</button></span>
       </div>
@@ -44,7 +46,10 @@
         <button class="pill-btn" data-home>&larr; home</button>
         <span class="count" id="learnCount"></span>
       </div>
-      <div class="panel" id="learnPanel"></div>
+      <div class="panel-wrap">
+        <img class="side-snoopy" id="learnSnoopy" src="img/snoopy-sleepy.png" alt="">
+        <div class="panel" id="learnPanel"></div>
+      </div>
       <p class="hint-keys"><kbd>1</kbd>–<kbd>4</kbd> to choose</p>
     </section>
 
@@ -60,14 +65,19 @@
       </div>
       <div class="timebar"><div id="timebar"></div></div>
 
+      <div class="panel-wrap">
+      <img class="side-snoopy" src="img/snoopy-typing.png" alt="">
       <div class="panel" id="playPanel">
         <div class="def" id="pDef"></div>
         <div class="starts">starts with <span class="letter" id="pStart"></span><span class="len" id="pLen"></span></div>
         <div class="typebox">
-          <span class="dot" id="dot"></span>
-          <input id="pInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type the word…">
+          <div class="typewrap">
+            <input id="pInput" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="type the word…">
+            <div class="dots" id="dots"></div>
+          </div>
         </div>
         <div class="reveal hidden" id="reveal"></div>
+      </div>
       </div>
 
       <div class="overlay" id="startOverlay">
