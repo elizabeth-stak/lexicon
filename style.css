@@ -183,13 +183,13 @@ h1 { font: 800 60px/1 var(--head); margin: 0 0 10px; letter-spacing: -.03em; tex
 
 /* ---------- snoopy ---------- */
 .home-snoopy { display: block; width: 210px; margin: 26px auto 0; }
-.panel-wrap { position: relative; }
-.side-snoopy { position: absolute; left: calc(100% + 28px); top: 24px; width: 170px; height: 190px; object-fit: contain; object-position: bottom center; pointer-events: none; }
+.panel-wrap { display: flex; flex-direction: column; }
+.side-snoopy { order: 2; display: block; margin: 22px auto 0; width: 170px; height: 150px; object-fit: contain; object-position: bottom center; pointer-events: none; }
 .side-snoopy.bounce { animation: bounce .45s ease-out; }
 @keyframes bounce { 0% { transform: translateY(0) scale(.9); } 40% { transform: translateY(-10px) scale(1.04); } 100% { transform: translateY(0) scale(1); } }
-@media (max-width: 1080px) {
-  .side-snoopy { position: static; display: block; margin: 0 auto 10px; width: 120px; height: 130px; }
-}
+
 
 .dots .d i { border-radius: 50%; }
 .entry .w .pron, .reveal .pron { font-size: 15px; }
+.mode-cards { margin-top: 14px; }
+.big.review { background: var(--pink); }

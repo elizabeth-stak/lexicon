@@ -6,7 +6,7 @@ const CHUNK_SIZE = 8;       // words per learning set
 
 // ---------- saved progress (stays in this browser) ----------
 const STORE = "lexicon-v1";
-let state = { learned: {}, miss: {}, best: 0, chunk: null };
+let state = { learned: {}, miss: {}, best: 0, chunk: null, reviewChunk: null };
 try {
   const saved = JSON.parse(localStorage.getItem(STORE));
   if (saved) state = Object.assign(state, saved);
@@ -54,7 +54,7 @@ document.querySelectorAll("[data-home]").forEach(b => b.onclick = renderHome);
 function bindReset() {
   $("resetBtn").onclick = () => {
     $("resetWrap").innerHTML = `clear everything? <button class="btn small" id="yes">yes, reset</button> <button class="btn ghost small" id="no">cancel</button>`;
-    $("yes").onclick = () => { state.learned = {}; state.miss = {}; state.best = 0; state.chunk = null; save(); restoreReset(); renderHome(); };
+    $("yes").onclick = () => { state.learned = {}; state.miss = {}; state.best = 0; state.chunk = null; state.reviewChunk = null; save(); restoreReset(); renderHome(); };
     $("no").onclick = restoreReset;
   };
 }
@@ -71,39 +71,71 @@ function setSnoopy(mood) {
 }
 
 // ---------- learn (multiple choice, in sets) ----------
-// Learn works in sets of CHUNK_SIZE words. Missed words go to the back of the
-// line, and the set only ends once every word in it has been answered correctly.
-let learnWord = null, learnDone = false;
+// Two modes: "new" teaches words you haven't learned yet, "review" quizzes words
+// you already learned. Each works in sets of CHUNK_SIZE. Missed words go to the
+// back of the line, and a set only ends once every word in it is answered correctly.
+let learnWord = null, learnDone = false, learnMode = "new";
 const findWord = w => WORDS.find(x => x.w === w);
+const chunkKey = mode => mode === "review" ? "reviewChunk" : "chunk";
+const getChunk = () => state[chunkKey(learnMode)];
+const setsLeft = c => c && c.queue.length ? new Set(c.queue).size : 0;
 
 function newChunk() {
-  const pool = shuffle(WORDS.filter(x => !state.learned[x.w])).slice(0, CHUNK_SIZE).map(x => x.w);
-  state.chunk = pool.length ? { words: pool, queue: pool.slice(), misses: 0 } : null;
+  let pool;
+  if (learnMode === "review") {
+    // words you've missed most come first, the rest are random
+    pool = shuffle(learnedWords()).sort((a, b) => (state.miss[b.w] || 0) - (state.miss[a.w] || 0));
+  } else {
+    pool = shuffle(WORDS.filter(x => !state.learned[x.w]));
+  }
+  pool = pool.slice(0, CHUNK_SIZE).map(x => x.w);
+  state[chunkKey(learnMode)] = pool.length ? { words: pool, queue: pool.slice(), misses: 0 } : null;
   save();
 }
 
 function startLearn() {
-  const c = state.chunk;
+  show("learn");
+  setSnoopy("sleepy");
+  $("learnCount").textContent = "learn";
+  $("learnHint").classList.add("hidden");
+  const newLeft = WORDS.filter(x => !state.learned[x.w]).length;
+  const learned = learnedWords().length;
+  const nIn = setsLeft(state.chunk), rIn = setsLeft(state.reviewChunk);
+  $("learnPanel").innerHTML = `
+    <div class="set-head">what do you want to do?</div>
+    <div class="cards mode-cards">
+      <button class="big learn" id="modeNew" ${newLeft ? "" : "disabled"}>
+        <span class="big-title">New words</span>
+        <span class="big-sub">${newLeft ? (nIn ? `resume set · ${nIn} left` : `${newLeft} words left`) : "no new words left"}</span>
+      </button>
+      <button class="big review" id="modeReview" ${learned ? "" : "disabled"}>
+        <span class="big-title">Review</span>
+        <span class="big-sub">${learned ? (rIn ? `resume set · ${rIn} left` : `go over the ${learned} you've learned`) : "learn some words first"}</span>
+      </button>
+    </div>`;
+  $("modeNew").onclick = () => beginLearn("new");
+  $("modeReview").onclick = () => beginLearn("review");
+}
+
+function beginLearn(mode) {
+  learnMode = mode;
+  const c = getChunk();
   if (c) c.queue = c.queue.filter(findWord);       // drop any words removed from the list
   if (!c || !c.queue.length) newChunk();
-  show("learn");
   nextLearn();
 }
 
 function nextLearn() {
   const panel = $("learnPanel");
-  const c = state.chunk;
-  if (!c) {
-    $("learnCount").textContent = `${WORDS.length} / ${WORDS.length} learned`;
-    panel.innerHTML = `<div class="def">You've learned every word.</div><p>Go play, or add more words to words.js.</p>`;
-    learnWord = null; return;
-  }
+  const c = getChunk();
+  if (!c) return startLearn();
   if (!c.queue.length) return chunkDone();
 
-  const done = c.words.length - new Set(c.queue).size;
-  $("learnCount").textContent = `set: ${done} / ${c.words.length}`;
+  const done = c.words.length - setsLeft(c);
+  $("learnCount").textContent = `${learnMode === "review" ? "review" : "set"}: ${done} / ${c.words.length}`;
   learnWord = findWord(c.queue[0]); learnDone = false;
   setSnoopy("sleepy");
+  $("learnHint").classList.remove("hidden");
 
   // distractors: other words from this set with the same part of speech first,
   // then other same part of speech words, then anything
@@ -122,49 +154,56 @@ function nextLearn() {
 function answerLearn(btn) {
   if (learnDone) return;
   learnDone = true;
-  const c = state.chunk;
+  const c = getChunk();
   const ok = btn.dataset.w === learnWord.w;
+  const review = learnMode === "review";
   document.querySelectorAll(".choice").forEach(b => { b.disabled = true; if (b.dataset.w === learnWord.w) b.classList.add("right"); else if (b !== btn) b.classList.add("dim"); });
-  c.queue.shift();
   setSnoopy(ok ? "happy" : "sad");
+  c.queue.shift();
   if (ok) {
     state.learned[learnWord.w] = true;
   } else {
     btn.classList.add("wrong");
     c.misses++;
     c.queue.push(learnWord.w);                     // comes back later in this set
+    if (review) state.miss[learnWord.w] = (state.miss[learnWord.w] || 0) + 1;  // shows up more in the game too
   }
   save();
   const picked = findWord(btn.dataset.w);
-  const left = new Set(c.queue).size;
+  const pron = PRON[learnWord.w] ? ` <span class="pron">(${esc(PRON[learnWord.w])})</span>` : "";
   $("learnFb").innerHTML = `
     <div class="fb ${ok ? "good" : "bad"}">
       ${ok
-        ? `correct, <b>${esc(learnWord.w)}</b>${PRON[learnWord.w] ? ` <span class="pron">(${esc(PRON[learnWord.w])})</span>` : ""} is added to the game.`
-        : `not quite, it's <b>${esc(learnWord.w)}</b>. it'll come back in this set.<div class="picked"><b>${esc(picked.w)}</b> <span class="pos ${esc(picked.p)}">${abbr(picked.p)}</span>${esc(picked.d)}</div>`}
+        ? (review ? `correct, <b>${esc(learnWord.w)}</b>${pron}. still got it.` : `correct, <b>${esc(learnWord.w)}</b>${pron} is added to the game.`)
+        : `not quite, it's <b>${esc(learnWord.w)}</b>${pron}. it'll come back in this set.<div class="picked"><b>${esc(picked.w)}</b> <span class="pos ${esc(picked.p)}">${abbr(picked.p)}</span>${esc(picked.d)}</div>`}
     </div>
-    <div class="actions"><button class="btn" id="learnNext">${left ? "next →" : "finish set →"}</button></div>`;
+    <div class="actions"><button class="btn" id="learnNext">${setsLeft(c) ? "next →" : "finish set →"}</button></div>`;
   $("learnNext").onclick = nextLearn;
   if (document.activeElement) document.activeElement.blur();
 }
 
 function chunkDone() {
-  const c = state.chunk;
+  const c = getChunk();
+  const review = learnMode === "review";
   setSnoopy("happy");
-  $("learnCount").textContent = `set: ${c.words.length} / ${c.words.length}`;
-  const remainingWords = WORDS.filter(x => !state.learned[x.w]).length;
+  $("learnHint").classList.add("hidden");
+  $("learnCount").textContent = `${review ? "review" : "set"}: ${c.words.length} / ${c.words.length}`;
+  const more = review ? learnedWords().length > 0 : WORDS.some(x => !state.learned[x.w]);
   $("learnPanel").innerHTML = `
-    <div class="set-head">set done</div>
-    <p class="muted-p">${c.words.length} words added to the game${c.misses ? ` · ${c.misses} miss${c.misses === 1 ? "" : "es"} along the way` : " · no misses"}. quick review:</p>
+    <div class="set-head">${review ? "review done" : "set done"}</div>
+    <p class="muted-p">${review ? `${c.words.length} words reviewed` : `${c.words.length} words added to the game`}${c.misses ? ` · ${c.misses} miss${c.misses === 1 ? "" : "es"} along the way` : " · no misses"}. quick review:</p>
     <div class="review">${c.words.map(findWord).filter(Boolean).map(x => `
       <div class="rv"><b>${esc(x.w)}</b> <span class="pos ${esc(x.p)}">${abbr(x.p)}</span>${esc(x.d)}</div>`).join("")}
     </div>
     <div class="actions">
-      ${remainingWords ? `<button class="btn" id="nextSet">next set →</button>` : ""}
+      ${more ? `<button class="btn" id="nextSet">${review ? "review more →" : "next set →"}</button>` : ""}
+      <button class="btn ghost" id="switchMode">${review ? "new words" : "review"}</button>
       <button class="btn ghost" id="setPlay">go play</button>
     </div>`;
+  const finish = () => { state[chunkKey(learnMode)] = null; save(); };
   if ($("nextSet")) $("nextSet").onclick = () => { newChunk(); nextLearn(); };
-  $("setPlay").onclick = () => { state.chunk = null; save(); startPlay(); };
+  $("switchMode").onclick = () => { finish(); beginLearn(review ? "new" : "review"); };
+  $("setPlay").onclick = () => { finish(); startPlay(); };
 }
 
 // ---------- play (timed typing) ----------
